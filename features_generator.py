@@ -166,7 +166,9 @@ def team_by_team(df):
 
 def clasificacion(df, df_prev_jornada):
     """
-    Create all classification stats
+    Create all classification stats, namely:
+
+    https://resultados.as.com/resultados/futbol/primera/clasificacion/
 
     :param df:
     :param df_prev_jornada:
