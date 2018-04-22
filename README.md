@@ -12,3 +12,9 @@ Create features dataset from the data crawled from the internet.
 
 <h3> 3. [PENDING] Predict next 'jornada' </h3>
 [PENDING] Predict next jornada results to play Quiniela.
+
+<h3> Bibliography </h3>
+
+I strongly recommend following read (it has nothing to do with my method -mine is far less sophisticated-)
+<a href="https://arxiv.org/pdf/1710.02824.pdf">Paper Beating Bookies</a> 
+
