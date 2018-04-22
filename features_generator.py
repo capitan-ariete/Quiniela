@@ -27,6 +27,9 @@ class Features:
 
         :param df:
         """
+        if df is None or len(df) == 0:
+            raise ValueError('You passed an empty dataframe.')
+
         self.df = df
         self.df_team = pd.DataFrame()
 
@@ -50,7 +53,11 @@ class Features:
             logger.warning('Cannot extract jornada number from url string')
             return
 
-        self.df = df.copy()
+        if df is None or len(df) == 0:
+            logger.warning('Dataframe is empty')
+            return
+        else:
+            self.df = df.copy()
 
         return
 
@@ -63,15 +70,16 @@ class Features:
         df = self.df.copy()
 
         if 'match' not in df.columns:
-            logger.warning('Cannot find "match" column in dataframe')
-            return
+            raise ValueError('Cannot find "match" column in dataframe')
 
         try:
             df['local'] = df['match'].apply(lambda x: x.split('-')[0].strip())
             df['visitante'] = df['match'].apply(lambda x: x.split('-')[1].split('en directo')[0].strip())
-        except ValueError:
-            logger.warning('Cannot extract jornada number from url string')
-            return
+        except ValueError as err:
+            raise err
+
+        if df is None or len(df) == 0:
+            raise ValueError('Dataframe is empty')
 
         self.df = df.drop('match', axis=1).copy()
 
@@ -93,15 +101,16 @@ class Features:
         df = self.df.copy()
 
         if 'result' not in df.columns:
-            logger.warning('Cannot find "result" column in dataframe')
-            return
+            raise ValueError('Cannot find "result" column in dataframe')
 
         try:
             df['local_goals'] = df['result'].apply(lambda x: int(x.split('-')[0].strip()))
             df['visitante_goals'] = df['result'].apply(lambda x: int(x.split('-')[1].strip()))
-        except ValueError:
-            logger.warning('Cannot extract goles')
-            return
+        except ValueError as err:
+            raise err
+
+        if df is None or len(df) == 0:
+            raise ValueError('Dataframe is empty')
 
         self.df = df.drop('result', axis=1).copy()
 
@@ -121,17 +130,18 @@ class Features:
         df = self.df.copy()
 
         if 'local_goals' not in df.columns or 'visitante_goals' not in df.columns:
-            logger.warning('Cannot find "goals" columns in dataframe')
-            return
+            raise ValueError('Cannot find "goals" columns in dataframe')
 
         try:
             df['winner'] = np.where(df['local_goals'] > df['visitante_goals'],
                                     1, np.where(df['local_goals'] == df['visitante_goals'],
                                                 0,
                                                 2))
-        except ValueError:
-            logger.warning('Cannot find winner')
-            return
+        except ValueError as err:
+            raise err
+
+        if df is None or len(df) == 0:
+            raise ValueError('Dataframe is empty')
 
         self.df = df.copy()
 
@@ -161,6 +171,17 @@ class Features:
         df_team = pd.DataFrame()
 
         cols_to_keep = ['team', 'jornada', 'GF', 'GC', 'score', 'local', 'winner']
+        cols_init = ['local', 'jornada', 'local_goals', 'visitante_goals']
+
+        if len([1 for col in cols_init if col not in df.columns]) > 0:
+            raise ValueError('Miss some mandatory columns in the dataframe')
+
+        if 'winner' not in df.columns:
+            try:
+                self.ganador()
+                df = self.df.copy()
+            except ValueError:
+                raise ValueError('"winner" column is not in dataframe')
 
         for local_team in df.local.unique():
             df_team_temp = df[df['local'] == local_team].copy()
@@ -174,6 +195,7 @@ class Features:
             df_team_temp['GF'] = df_team_temp['local_goals']
             df_team_temp['GC'] = df_team_temp['visitante_goals']
             df_team_temp['local'] = True
+
             df_team = pd.concat([df_team, df_team_temp[cols_to_keep]])
 
         for visitante_team in df.visitante.unique():
@@ -189,6 +211,9 @@ class Features:
             df_team_temp['goals'] = df_team_temp['visitante_goals']
             df_team_temp['local'] = False
             df_team = pd.concat([df_team, df_team_temp[cols_to_keep]])
+
+        if df is None or len(df) == 0:
+            raise ValueError('Dataframe is empty')
 
         self.df_team = df_team.copy()
 
@@ -206,11 +231,19 @@ class Features:
         :return:
         """
 
-        df_last = df.copy()
+        if df is None or len(df) == 0:
+            raise ValueError('Dataframe is empty')
 
         if df_prev_jornada is None:
-            logger.warning('Cannot compute clasification with empty df_prev_jornada')
-            return
+            logger.warning('Cannot compute clasification with empty df_prev_jornada... Creating an empty dataframe')
+            df_prev_jornada = pd.DataFrame()
+            pass
+
+        cols_init = ['winner', 'local', 'GF', 'GC', 'score']
+        if len([1 for col in cols_init if col not in df.columns]) > 0:
+            raise ValueError('Miss some mandatory columns in the dataframe')
+
+        df_last = df.copy()
 
         df_last['PJ'] = 1
 
@@ -248,6 +281,9 @@ class Features:
             df_last['jornada'] = df['jornada'].unique()[0]
 
         df_last = df_last.sort_values(by='pts', ascending=False)
+
+        if df_last is None or len(df_last) == 0:
+            raise ValueError('Cannot create dataframe of teams')
 
         return df_last
 
@@ -287,29 +323,11 @@ def main():
 
     featex = Features(df)
 
+    # create stats
     featex.jornada_generator()
-
-    if featex.df is None or len(featex.df) == 0:
-        logger.error('Cannot generate jornadas')
-        return
-
     featex.local_visitante()
-
-    if featex.df is None or len(featex.df) == 0:
-        logger.error('Cannot generate local and visitor teams')
-        return
-
     featex.goles()
-
-    if featex.df is None or len(featex.df) == 0:
-        logger.error('Cannot generate local and visitor teams')
-        return
-
     featex.ganador()
-
-    if featex.df is None or len(featex.df) == 0:
-        logger.error('Cannot generate local and visitor teams')
-        return
 
     key = './files/partit_a_partit/{y}/{m}/{d}/'.format(y=today.year,
                                                         m=today.month,
@@ -318,10 +336,6 @@ def main():
     load_files(key, filename, featex.df)
 
     featex.team_by_team()
-
-    if featex.df_team is None or len(featex.df_team) == 0:
-        logger.error('Cannot create dataframe of teams')
-        return
 
     df_prev_jornada = pd.DataFrame()
 
@@ -332,7 +346,8 @@ def main():
         if df_temp is not None:
             df_prev_jornada = df_temp.copy()
         else:
-            continue
+            logger.error('clasificacion returned None')
+            break
 
         key = './files/clasificacion/{y}/{m}/{d}/'.format(y=today.year,
                                                           m=today.month,
