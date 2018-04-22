@@ -24,8 +24,7 @@ class Features:
 
     def __init__(self, df):
         """
-
-        :param df:
+        :param df: pd.DataFrame()
         """
         if df is None or len(df) == 0:
             raise ValueError('You passed an empty dataframe.')
@@ -275,17 +274,85 @@ class Features:
 
         df_last.drop(['score', 'local', 'winner'], axis=1, inplace=True)
 
+        if df_last is None or len(df_last) == 0:
+            raise ValueError('Cannot create dataframe of teams')
+
         if len(df_prev_jornada) != 0:
+            if 'ranking' in df_prev_jornada.columns:
+                df_prev_jornada.drop('ranking', axis=1, inplace=True)
+
             df_last = pd.concat([df_prev_jornada, df_last])
             df_last = df_last.groupby('team', as_index=False).sum()
             df_last['jornada'] = df['jornada'].unique()[0]
 
-        df_last = df_last.sort_values(by='pts', ascending=False)
-
-        if df_last is None or len(df_last) == 0:
-            raise ValueError('Cannot create dataframe of teams')
+        df_last = df_last.sort_values(by='pts', ascending=False).reset_index(drop=True)
+        df_last = df_last.reset_index().rename(columns={'index': 'ranking'})
+        df_last['ranking'] = df_last['ranking']+1
 
         return df_last
+
+# TODO. Falta crear el df_result
+    @staticmethod
+    def predictor_dataset(df, df_result):
+        """
+        Create dataframe of features for the predictor
+
+        First create the ratio values of calendar dataframe
+        Second merge both dataframes one with the output the second one with the features.
+
+        :param df:
+        :param df_result:
+        :return:
+        """
+
+        if df is None or len(df) == 0:
+            raise ValueError('Dataframe is empty')
+
+        if df_result is None:
+            raise ValueError('Dataframe is empty')
+
+        cols_init = ['PG', 'PJ', 'PE', 'PP',
+                     'PG_local', 'PJ_local', 'PE_local', 'PP_local',
+                     'PG_visitante', 'PJ_visitante', 'PE_visitante', 'PP_visitante']
+        cols_result_init = ['team', 'jornada']
+
+        if len([1 for col in cols_init if col not in df.columns]) > 0:
+            raise ValueError('Miss some mandatory columns in the dataframe')
+
+        if len([1 for col in cols_result_init if col not in df.columns]) > 0:
+            raise ValueError('Miss some mandatory columns in the dataframe')
+
+        if len([1 for col in cols_result_init if col not in df_result.columns]) > 0:
+            raise ValueError('Miss some mandatory columns in the dataframe')
+
+        # global stats
+        df['PG'] = df['PG']/df['PJ']
+        df['PE'] = df['PE']/df['PJ']
+        df['PP'] = df['PP']/df['PJ']
+        # goals ratio
+        df['GF_ratio'] = df['GF']/df['PJ']
+        df['GC_ratio'] = df['GC']/df['PJ']
+
+        # local stats
+        df['PG_local'] = df['PG_local']/df['PJ_local']
+        df['PE_local'] = df['PE_local']/df['PJ_local']
+        df['PP_local'] = df['PP_local']/df['PJ_local']
+        df['GF_ratio_local'] = df['GF_local']/df['PJ_local']
+        df['GC_ratio_local'] = df['GC_local']/df['PJ_local']
+
+        # visitante stats
+        df['PG_visitante'] = df['PG_visitante']/df['PJ_visitante']
+        df['PE_visitante'] = df['PE_visitante']/df['PJ_visitante']
+        df['PP_visitante'] = df['PP_visitante']/df['PJ_visitante']
+        df['GF_ratio_visitante'] = df['GF_ratio_visitante']/df['PJ_visitante']
+        df['GC_ratio_visitante'] = df['GC_ratio_visitante']/df['PJ_visitante']
+
+        df.drop(cols_init, axis=1, inplace=True)
+
+# TODO. Acabar esto mergear
+        df = df.merge(df_results, right_on=['jornada', 'team'], left_on=['jornada', 'team'])
+
+        return df
 
 
 def load_files(key, filename, df):
@@ -340,6 +407,7 @@ def main():
     df_prev_jornada = pd.DataFrame()
 
     for jornada in sorted(featex.df_team.jornada.unique()):
+
         df_temp = featex.clasificacion(featex.df_team[featex.df_team['jornada'] == jornada],
                                        df_prev_jornada)
 
@@ -353,6 +421,15 @@ def main():
                                                           m=today.month,
                                                           d=today.day)
         filename = 'clasificacion_{j}.csv'.format(j=jornada)
+        load_files(key, filename, df_temp)
+
+# TODO falta definir el df_result!! WiP
+        predictor_dataset(df_temp, df_result)
+
+        key = './files/predictor_dataset/{y}/{m}/{d}/'.format(y=today.year,
+                                                              m=today.month,
+                                                              d=today.day)
+        filename = 'predictor_dataset_{j}.csv'.format(j=jornada)
         load_files(key, filename, df_temp)
 
 
