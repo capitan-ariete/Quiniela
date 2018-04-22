@@ -21,3 +21,4 @@ WORKDIR ../
 CMD ["python", "features_generator.py"]
 
 # run predictor
+CMD ["python", "quiniela_predictor.py"]
