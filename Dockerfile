@@ -7,5 +7,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-CMD [ "python", "./quiniela_crawler.py" ]
+WORKDIR ./quiniela_crawler
 
+CMD ["scrapy crawl quiniela"]
