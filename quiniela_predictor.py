@@ -2,7 +2,7 @@ import os
 import logging.config
 from logging.config import fileConfig
 import pandas as pd
-from sklearn.ensemble import RandomForestClassifier
+from tpot import TPOTClassifier
 
 if not os.path.isdir('logs'):
     os.makedirs('logs')
@@ -14,29 +14,45 @@ fileConfig('logger.ini')
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
 
-# TODO esto tiene que ser env variable
-input_file = './files/clasificacion/2018/4/22/clasificacion_33.csv'
+train_file_seed = './files/predictor_dataset/2018/4/26/predictor_dataset_'
+test_file_seed = './files/predictor_dataset_result/2018/4/26/predictor_dataset_result'
+
+
+# TODO
+def clean_before_tpot(X_train, y_train, X_test, y_test):
+    return X_train, y_train, X_test, y_test
 
 
 def main():
-    df = pd.read_csv(input_file)
 
-    X, y = make_classification(n_samples=1000, n_features=4,
-                               n_informative = 2, n_redundant = 0,
-                               random_state = 0, shuffle = False)
+    X_train, y_train, X_test, y_test = pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
-    clf = RandomForestClassifier(max_depth=2, random_state=0)
+    for j in range(8, 31):
+        try:
+            X_train = pd.concat([X_train,
+                                 pd.read_csv('{f}{j}.csv'.format(f=train_file_seed, j=j))])
+            y_train = pd.concat([y_train,
+                                 pd.read_csv('{f}{j}.csv'.format(f=test_file_seed, j=j))])
+        except ValueError:
+            pass
 
-    clf.fit(X, y)
+    for j in range(31, 39):
+        try:
+            X_test = pd.concat([X_test,
+                                pd.read_csv('{f}{j}.csv'.format(f=train_file_seed, j=j))])
+            y_test = pd.concat([y_test,
+                                pd.read_csv('{f}result{j}.csv'.format(f=train_file_seed, j=j))])
+        except ValueError:
+            pass
 
-    RandomForestClassifier(bootstrap=True, class_weight=None, criterion='gini',
-                           max_depth=2, max_features='auto', max_leaf_nodes=None,
-                           min_impurity_decrease=0.0, min_impurity_split=None,
-                           min_samples_leaf=1, min_samples_split=2,
-                           min_weight_fraction_leaf=0.0, n_estimators=10, n_jobs=1,
-                           oob_score=False, random_state=0, verbose=0, warm_start=False)
+    X_train, y_train, X_test, y_test = clean_before_tpot(X_train, y_train, X_test, y_test)
 
-    print(clf.feature_importances_)
+    tpot = TPOTClassifier(generations=5, population_size=20, verbosity=2)
+    tpot.fit(X_train, y_train)
+    print(tpot.score(X_test, y_test))
+    tpot.export('tpot_quiniela_pipeline.py')
+
+    return
 
 
 if __name__ == '__main__':

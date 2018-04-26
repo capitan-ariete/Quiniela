@@ -218,6 +218,123 @@ class Features:
 
         return
 
+# TODO. Ojo con el ranking!!
+    def match_ranking_diff(self, df_clasificacion, jornada):
+        """
+        Difference in the ranking between rivals
+
+        For instance if
+
+        local, visitante, jornada
+        Barcelona, R.Madrid, 11
+
+        and
+
+        team, ranking, jornada
+        Barcelona, 1, 10
+        R.Madrid, 3, 10
+
+        Then
+
+        local, jornada, rival_ranking_diff
+        Barcelona, 11, -2
+        R.Madrid, 11, +2
+
+        :param df_clasificacion: pandas DataFrame. clasificacion dataframe
+        :param jornada: integer. Jornada to parse
+        :return:
+        """
+
+        if self.df is None or len(self.df) == 0:
+            raise ValueError('Dataframe is empty')
+
+        if 'jornada' not in self.df.columns:
+            raise ValueError('Dataframe has to have "jornada" feature')
+
+        if jornada > 1:
+            df_results = self.df[self.df['jornada'] == jornada - 1]
+        else:
+            df_results = self.df[self.df['jornada'] == jornada]
+
+# TODO AQUI podria añadir la feature de is_local
+        df_temp = pd.concat([df_results,
+                             df_results.rename(columns={'local': 'visitante',
+                                                        'visitante': 'local'})])
+        df_temp.rename(columns={'visitante': 'rival'}, inplace=True)
+        df_temp = df_clasificacion.merge(df_temp[['local', 'rival']],
+                                         how='left',
+                                         left_on='team',
+                                         right_on='local')
+
+        df_clasificacion = df_temp.merge(df_clasificacion[['team', 'ranking']],
+                                         how='left',
+                                         left_on='rival',
+                                         right_on='team').copy()
+        df_clasificacion['rival_ranking_diff'] = df_clasificacion['ranking_x'] - df_clasificacion['ranking_y']
+        df_clasificacion.drop(['local', 'rival', 'team_y', 'ranking_y'], axis=1, inplace=True)
+        df_clasificacion.rename(columns={'ranking_x': 'ranking', 'team_x': 'team'}, inplace=True)
+
+        return df_clasificacion
+
+    def predictor_dataset(self, df):
+        """
+        Create dataframe of features for the predictor
+
+        First create the ratio values of calendar dataframe
+        Second merge both dataframes one with the output the second one with the features.
+
+        :param df: pandas DataFrame. Calendar dataframe
+        :return:
+        """
+
+        if df is None or len(df) == 0:
+            raise ValueError('Dataframe is empty')
+
+        cols_init = ['PG', 'PJ', 'PE', 'PP',
+                     'PG_local', 'PJ_local', 'PE_local', 'PP_local',
+                     'PG_visitante', 'PJ_visitante', 'PE_visitante', 'PP_visitante']
+        cols_result_init = ['team', 'jornada']
+
+        if len([1 for col in cols_init if col not in df.columns]) > 0:
+            raise ValueError('Miss some mandatory columns in the dataframe')
+
+        if len([1 for col in cols_result_init if col not in df.columns]) > 0:
+            raise ValueError('Miss some mandatory columns in the dataframe')
+
+        # global stats
+        df['PG'] = df['PG'] / df['PJ']
+        df['PE'] = df['PE'] / df['PJ']
+        df['PP'] = df['PP'] / df['PJ']
+        # goals ratio
+        df['GF_ratio'] = df['GF'] / df['PJ']
+        df['GC_ratio'] = df['GC'] / df['PJ']
+
+        # local stats
+        df['PG_local'] = df['PG_local'] / df['PJ_local']
+        df['PE_local'] = df['PE_local'] / df['PJ_local']
+        df['PP_local'] = df['PP_local'] / df['PJ_local']
+        df['GF_ratio_local'] = df['GF_local'] / df['PJ_local']
+        df['GC_ratio_local'] = df['GC_local'] / df['PJ_local']
+
+        # visitante stats
+        df['PG_visitante'] = df['PG_visitante'] / df['PJ_visitante']
+        df['PE_visitante'] = df['PE_visitante'] / df['PJ_visitante']
+        df['PP_visitante'] = df['PP_visitante'] / df['PJ_visitante']
+        df['GF_ratio_visitante'] = df['GF_visitante'] / df['PJ_visitante']
+        df['GC_ratio_visitante'] = df['GC_visitante'] / df['PJ_visitante']
+
+        df.drop(['GF', 'GC', 'PJ', 'PJ_local', 'PJ_visitante'], axis=1, inplace=True)
+
+        df = df.fillna(0)
+
+        # results is the result of following jornada
+        jornada = df.jornada.values[0] - 1
+
+        if jornada in range(1, 39):
+            df = self.match_ranking_diff(df, jornada)
+
+        return df
+
     @staticmethod
     def clasificacion(df, df_prev_jornada):
         """
@@ -250,6 +367,7 @@ class Features:
         df_last['PG_local'] = np.where(df_last['winner'] == 1, np.where(df_last['local'], 1, 0), 0)
         df_last['PE_local'] = np.where(df_last['winner'] == 0, np.where(df_last['local'], 1, 0), 0)
         df_last['PP_local'] = np.where(df_last['winner'] == 2, np.where(df_last['local'], 1, 0), 0)
+        df_last['PJ_local'] = df_last['PG_local'] + df_last['PE_local'] + df_last['PP_local']
         df_last['GF_local'] = np.where(df_last['local'], df_last['GF'], 0)
         df_last['GC_local'] = np.where(df_last['local'], df_last['GC'], 0)
         df_last['pts_local'] = np.where(df_last['local'],
@@ -260,6 +378,7 @@ class Features:
         df_last['PG_visitante'] = np.where(df_last['winner'] == 2, np.where(~df_last['local'], 1, 0), 0)
         df_last['PE_visitante'] = np.where(df_last['winner'] == 0, np.where(~df_last['local'], 1, 0), 0)
         df_last['PP_visitante'] = np.where(df_last['winner'] == 1, np.where(~df_last['local'], 1, 0), 0)
+        df_last['PJ_visitante'] = df_last['PG_visitante'] + df_last['PE_visitante'] + df_last['PP_visitante']
         df_last['GF_visitante'] = np.where(~df_last['local'], df_last['GF'], 0)
         df_last['GC_visitante'] = np.where(~df_last['local'], df_last['GC'], 0)
         df_last['pts_visitante'] = np.where(~df_last['local'],
@@ -270,6 +389,7 @@ class Features:
         df_last['PG'] = df_last['PG_local'] + df_last['PG_visitante']
         df_last['PE'] = df_last['PE_local'] + df_last['PE_visitante']
         df_last['PP'] = df_last['PP_local'] + df_last['PP_visitante']
+        df_last['PJ'] = df_last['PG'] + df_last['PE'] + df_last['PP']
         df_last['pts'] = df_last['pts_local'] + df_last['pts_visitante']
 
         df_last.drop(['score', 'local', 'winner'], axis=1, inplace=True)
@@ -285,74 +405,36 @@ class Features:
             df_last = df_last.groupby('team', as_index=False).sum()
             df_last['jornada'] = df['jornada'].unique()[0]
 
+            df_last = df_last.merge(df_prev_jornada[['team', 'pts']],
+                                    how='left',
+                                    left_on='team',
+                                    right_on='team')
+            df_last.rename(columns={'pts_x': 'pts', 'pts_y': '1_match_ago_pts'}, inplace=True)
+
+            for i in range(1, 7):
+                if '{}_match_ago'.format(i) in df_prev_jornada.columns:
+                    x = df_prev_jornada.copy()
+                    x = x[['{}_match_ago'.format(i), 'team']]
+                    x.rename(columns={'{}_match_ago'.format(i): '{}_match_ago'.format(i+1)},
+                             inplace=True)
+                    df_last = df_last.merge(x, how='left', on='team')
+
+            df_last['1_match_ago'] = np.where(df_last['pts'] - df_last['1_match_ago_pts'] == 3,
+                                              'W',
+                                              np.where(df_last['pts'] - df_last['1_match_ago_pts'] == 1,
+                                                       'T',
+                                                       np.where(df_last['pts'] - df_last['1_match_ago_pts'] == 0,
+                                                                'L',
+                                                                'UNKNOWN'))
+                                          )
+
+            df_last.drop('1_match_ago_pts', axis=1, inplace=True)
+
         df_last = df_last.sort_values(by='pts', ascending=False).reset_index(drop=True)
         df_last = df_last.reset_index().rename(columns={'index': 'ranking'})
         df_last['ranking'] = df_last['ranking']+1
 
         return df_last
-
-# TODO. Falta crear el df_result
-    @staticmethod
-    def predictor_dataset(df, df_result):
-        """
-        Create dataframe of features for the predictor
-
-        First create the ratio values of calendar dataframe
-        Second merge both dataframes one with the output the second one with the features.
-
-        :param df:
-        :param df_result:
-        :return:
-        """
-
-        if df is None or len(df) == 0:
-            raise ValueError('Dataframe is empty')
-
-        if df_result is None:
-            raise ValueError('Dataframe is empty')
-
-        cols_init = ['PG', 'PJ', 'PE', 'PP',
-                     'PG_local', 'PJ_local', 'PE_local', 'PP_local',
-                     'PG_visitante', 'PJ_visitante', 'PE_visitante', 'PP_visitante']
-        cols_result_init = ['team', 'jornada']
-
-        if len([1 for col in cols_init if col not in df.columns]) > 0:
-            raise ValueError('Miss some mandatory columns in the dataframe')
-
-        if len([1 for col in cols_result_init if col not in df.columns]) > 0:
-            raise ValueError('Miss some mandatory columns in the dataframe')
-
-        if len([1 for col in cols_result_init if col not in df_result.columns]) > 0:
-            raise ValueError('Miss some mandatory columns in the dataframe')
-
-        # global stats
-        df['PG'] = df['PG']/df['PJ']
-        df['PE'] = df['PE']/df['PJ']
-        df['PP'] = df['PP']/df['PJ']
-        # goals ratio
-        df['GF_ratio'] = df['GF']/df['PJ']
-        df['GC_ratio'] = df['GC']/df['PJ']
-
-        # local stats
-        df['PG_local'] = df['PG_local']/df['PJ_local']
-        df['PE_local'] = df['PE_local']/df['PJ_local']
-        df['PP_local'] = df['PP_local']/df['PJ_local']
-        df['GF_ratio_local'] = df['GF_local']/df['PJ_local']
-        df['GC_ratio_local'] = df['GC_local']/df['PJ_local']
-
-        # visitante stats
-        df['PG_visitante'] = df['PG_visitante']/df['PJ_visitante']
-        df['PE_visitante'] = df['PE_visitante']/df['PJ_visitante']
-        df['PP_visitante'] = df['PP_visitante']/df['PJ_visitante']
-        df['GF_ratio_visitante'] = df['GF_ratio_visitante']/df['PJ_visitante']
-        df['GC_ratio_visitante'] = df['GC_ratio_visitante']/df['PJ_visitante']
-
-        df.drop(cols_init, axis=1, inplace=True)
-
-# TODO. Acabar esto mergear
-        df = df.merge(df_results, right_on=['jornada', 'team'], left_on=['jornada', 'team'])
-
-        return df
 
 
 def load_files(key, filename, df):
@@ -388,6 +470,7 @@ def main():
         logger.error('Datraframe is null or empty')
         return
 
+# TODO falta separar por primera y segunda!!
     featex = Features(df)
 
     # create stats
@@ -405,6 +488,7 @@ def main():
     featex.team_by_team()
 
     df_prev_jornada = pd.DataFrame()
+    df_predictor_dataset_old = pd.DataFrame()
 
     for jornada in sorted(featex.df_team.jornada.unique()):
 
@@ -423,14 +507,27 @@ def main():
         filename = 'clasificacion_{j}.csv'.format(j=jornada)
         load_files(key, filename, df_temp)
 
-# TODO falta definir el df_result!! WiP
-        predictor_dataset(df_temp, df_result)
+# TODO. Falta añadir is_local (true = local, False= visitane)
+# TODO. Falta VALIDAR rival_ranking_diff
+        df_predictor_dataset = featex.predictor_dataset(df_temp)
 
         key = './files/predictor_dataset/{y}/{m}/{d}/'.format(y=today.year,
                                                               m=today.month,
                                                               d=today.day)
         filename = 'predictor_dataset_{j}.csv'.format(j=jornada)
-        load_files(key, filename, df_temp)
+        load_files(key, filename, df_predictor_dataset)
+
+        if len(df_predictor_dataset_old) > 0 and '1_match_ago' in df_predictor_dataset.columns:
+            y = df_predictor_dataset_old.merge(df_predictor_dataset[['team', '1_match_ago']],
+                                               how='left',
+                                               on='team').rename(columns={'1_match_ago': 'result'})
+            key = './files/predictor_dataset_result/{y}/{m}/{d}/'.format(y=today.year,
+                                                                         m=today.month,
+                                                                         d=today.day)
+            filename = 'predictor_dataset_result{j}.csv'.format(j=jornada)
+            load_files(key, filename, y)
+
+        df_predictor_dataset_old = df_predictor_dataset[['team', 'jornada']].copy()
 
 
 if __name__ == '__main__':
