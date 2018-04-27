@@ -539,7 +539,7 @@ def main():
                                                                                     y=today.year,
                                                                                     m=today.month,
                                                                                     d=today.day)
-                filename = 'predictor_dataset_result{j}.csv'.format(j=jornada)
+                filename = 'predictor_dataset_result_{j}.csv'.format(j=jornada)
                 load_files(key, filename, y)
 
             df_predictor_dataset_old = df_predictor_dataset[['team', 'jornada']].copy()
