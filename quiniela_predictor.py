@@ -47,7 +47,7 @@ def main():
 
     X_train, y_train, X_test, y_test = clean_before_tpot(X_train, y_train, X_test, y_test)
 
-    tpot = TPOTClassifier(generations=5, population_size=20, verbosity=2)
+    tpot = TPOTClassifier(generations=10, population_size=20, verbosity=2)
     tpot.fit(X_train, y_train)
     print(tpot.score(X_test, y_test))
     tpot.export('tpot_quiniela_pipeline.py')

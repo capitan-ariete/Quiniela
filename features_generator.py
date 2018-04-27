@@ -17,6 +17,7 @@ logger.setLevel(logging.DEBUG)
 
 # TODO esto tiene que ser env variable
 input_file = './files/file.csv'
+ligas = ['primera', 'segunda']
 today = dt.date.today()
 
 
@@ -218,7 +219,6 @@ class Features:
 
         return
 
-# TODO. Ojo con el ranking!!
     def match_ranking_diff(self, df_clasificacion, jornada):
         """
         Difference in the ranking between rivals
@@ -256,7 +256,6 @@ class Features:
         else:
             df_results = self.df[self.df['jornada'] == jornada]
 
-# TODO AQUI podria añadir la feature de is_local
         df_temp = pd.concat([df_results,
                              df_results.rename(columns={'local': 'visitante',
                                                         'visitante': 'local'})])
@@ -324,6 +323,17 @@ class Features:
         df['GC_ratio_visitante'] = df['GC_visitante'] / df['PJ_visitante']
 
         df.drop(['GF', 'GC', 'PJ', 'PJ_local', 'PJ_visitante'], axis=1, inplace=True)
+
+        if df.jornada.values[0] == 34:
+            print('hi')
+
+        df_results = self.df[self.df['jornada'] == df.jornada.values[0]]
+        df_results.loc[:, 'is_local'] = 1
+
+        df = df.merge(df_results[['local', 'is_local']],
+                      how='left',
+                      left_on='team',
+                      right_on='local').drop(['local'], axis=1)
 
         df = df.fillna(0)
 
@@ -507,8 +517,6 @@ def main():
         filename = 'clasificacion_{j}.csv'.format(j=jornada)
         load_files(key, filename, df_temp)
 
-# TODO. Falta añadir is_local (true = local, False= visitane)
-# TODO. Falta VALIDAR rival_ranking_diff
         df_predictor_dataset = featex.predictor_dataset(df_temp)
 
         key = './files/predictor_dataset/{y}/{m}/{d}/'.format(y=today.year,

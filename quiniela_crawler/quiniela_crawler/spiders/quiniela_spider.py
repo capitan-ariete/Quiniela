@@ -5,6 +5,10 @@ Crawl results URLs such as
 https://resultados.as.com/resultados/futbol/primera/2017_2018/jornada/regular_a_30/
 https://resultados.as.com/resultados/futbol/segunda/2017_2018/jornada/regular_a_30/
 and extract match and result.
+
+To run it use:
+cd quiniela_crawler
+scrapy crawl quiniela -o ../files/files_new.csv
 """
 
 
@@ -13,7 +17,6 @@ class BlogSpider(scrapy.Spider):
 
     def start_requests(self):
         jornadas = 38
-
         ligas = ['primera', 'segunda']
 
         urls = ['https://resultados.as.com/resultados/futbol/' \
