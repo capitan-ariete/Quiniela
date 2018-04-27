@@ -324,9 +324,6 @@ class Features:
 
         df.drop(['GF', 'GC', 'PJ', 'PJ_local', 'PJ_visitante'], axis=1, inplace=True)
 
-        if df.jornada.values[0] == 34:
-            print('hi')
-
         df_results = self.df[self.df['jornada'] == df.jornada.values[0]]
         df_results.loc[:, 'is_local'] = 1
 
@@ -474,68 +471,78 @@ def load_files(key, filename, df):
 def main():
 
     # read matches
-    df = pd.read_csv(input_file)
+    df_all = pd.read_csv(input_file)
 
-    if df is None or len(df) == 0:
+    if df_all is None or len(df_all) == 0:
         logger.error('Datraframe is null or empty')
         return
 
-# TODO falta separar por primera y segunda!!
-    featex = Features(df)
+    for liga in ligas:
 
-    # create stats
-    featex.jornada_generator()
-    featex.local_visitante()
-    featex.goles()
-    featex.ganador()
+        logger.info('Generating data for competition: {}'.format(liga))
 
-    key = './files/partit_a_partit/{y}/{m}/{d}/'.format(y=today.year,
-                                                        m=today.month,
-                                                        d=today.day)
-    filename = 'partit_a_partit.csv'
-    load_files(key, filename, featex.df)
+        df = df_all[df_all['liga'] == liga]
+        df.drop('liga', axis=1, inplace=True)
 
-    featex.team_by_team()
+        featex = Features(df)
 
-    df_prev_jornada = pd.DataFrame()
-    df_predictor_dataset_old = pd.DataFrame()
+        # create stats
+        featex.jornada_generator()
+        featex.local_visitante()
+        featex.goles()
+        featex.ganador()
 
-    for jornada in sorted(featex.df_team.jornada.unique()):
+        key = './files/{liga}/partit_a_partit/{y}/{m}/{d}/'.format(liga=liga,
+                                                                   y=today.year,
+                                                                   m=today.month,
+                                                                   d=today.day)
+        filename = 'partit_a_partit.csv'
+        load_files(key, filename, featex.df)
 
-        df_temp = featex.clasificacion(featex.df_team[featex.df_team['jornada'] == jornada],
-                                       df_prev_jornada)
+        featex.team_by_team()
 
-        if df_temp is not None:
-            df_prev_jornada = df_temp.copy()
-        else:
-            logger.error('clasificacion returned None')
-            break
+        df_prev_jornada = pd.DataFrame()
+        df_predictor_dataset_old = pd.DataFrame()
 
-        key = './files/clasificacion/{y}/{m}/{d}/'.format(y=today.year,
-                                                          m=today.month,
-                                                          d=today.day)
-        filename = 'clasificacion_{j}.csv'.format(j=jornada)
-        load_files(key, filename, df_temp)
+        for jornada in sorted(featex.df_team.jornada.unique()):
 
-        df_predictor_dataset = featex.predictor_dataset(df_temp)
+            df_temp = featex.clasificacion(featex.df_team[featex.df_team['jornada'] == jornada],
+                                           df_prev_jornada)
 
-        key = './files/predictor_dataset/{y}/{m}/{d}/'.format(y=today.year,
-                                                              m=today.month,
-                                                              d=today.day)
-        filename = 'predictor_dataset_{j}.csv'.format(j=jornada)
-        load_files(key, filename, df_predictor_dataset)
+            if df_temp is not None:
+                df_prev_jornada = df_temp.copy()
+            else:
+                logger.error('clasificacion returned None')
+                break
 
-        if len(df_predictor_dataset_old) > 0 and '1_match_ago' in df_predictor_dataset.columns:
-            y = df_predictor_dataset_old.merge(df_predictor_dataset[['team', '1_match_ago']],
-                                               how='left',
-                                               on='team').rename(columns={'1_match_ago': 'result'})
-            key = './files/predictor_dataset_result/{y}/{m}/{d}/'.format(y=today.year,
+            key = './files/{liga}/clasificacion/{y}/{m}/{d}/'.format(liga=liga,
+                                                                     y=today.year,
+                                                                     m=today.month,
+                                                                     d=today.day)
+            filename = 'clasificacion_{j}.csv'.format(j=jornada)
+            load_files(key, filename, df_temp)
+
+            df_predictor_dataset = featex.predictor_dataset(df_temp)
+
+            key = './files/{liga}/predictor_dataset/{y}/{m}/{d}/'.format(liga=liga,
+                                                                         y=today.year,
                                                                          m=today.month,
                                                                          d=today.day)
-            filename = 'predictor_dataset_result{j}.csv'.format(j=jornada)
-            load_files(key, filename, y)
+            filename = 'predictor_dataset_{j}.csv'.format(j=jornada)
+            load_files(key, filename, df_predictor_dataset)
 
-        df_predictor_dataset_old = df_predictor_dataset[['team', 'jornada']].copy()
+            if len(df_predictor_dataset_old) > 0 and '1_match_ago' in df_predictor_dataset.columns:
+                y = df_predictor_dataset_old.merge(df_predictor_dataset[['team', '1_match_ago']],
+                                                   how='left',
+                                                   on='team').rename(columns={'1_match_ago': 'result'})
+                key = './files/{liga}/predictor_dataset_result/{y}/{m}/{d}/'.format(liga=liga,
+                                                                                    y=today.year,
+                                                                                    m=today.month,
+                                                                                    d=today.day)
+                filename = 'predictor_dataset_result{j}.csv'.format(j=jornada)
+                load_files(key, filename, y)
+
+            df_predictor_dataset_old = df_predictor_dataset[['team', 'jornada']].copy()
 
 
 if __name__ == '__main__':
