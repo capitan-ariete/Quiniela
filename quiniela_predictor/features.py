@@ -256,7 +256,7 @@ class Features:
 
         return df_clasificacion
 
-    def predictor_dataset_team_by_team(self, df):
+    def predictor_dataset_team_by_team(self, df_temp):
         """
         Create dataframe of features for the predictor
 
@@ -273,6 +273,8 @@ class Features:
         :param df: pandas DataFrame. Calendar dataframe
         :return:
         """
+
+        df = df_temp.copy()
 
         if df is None or len(df) == 0:
             raise ValueError('Dataframe is empty')
@@ -418,10 +420,10 @@ class Features:
                                           left_on=[f'{t}', 'jornada'],
                                           right_on=['team', 'jornada'])
 
-        df_results.drop(['local', 'visitante', 'local_goals', 'visitante_goals',
-                         'team_x', 'team_y', 'is_local'],
-                        axis=1,
-                        inplace=True)
+         df_results.drop(['local', 'visitante', 'local_goals', 'visitante_goals',
+                          'team_x', 'team_y', 'is_local'],
+                         axis=1,
+                         inplace=True)
 
         return df_results
 

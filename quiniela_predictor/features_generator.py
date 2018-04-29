@@ -6,7 +6,7 @@ from features import Features
 
 logger = logging.getLogger(__name__)
 
-input_file = '../files/file.csv'
+input_file = './files/file.csv'
 ligas = ['primera', 'segunda']
 today = dt.date.today()
 

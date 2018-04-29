@@ -14,8 +14,8 @@ today_folder = '{y}/{m}/{d}/'.format(y=today.year,
                                      m=today.month,
                                      d=today.day)
 
-x_file_seed = '../files/segunda/predictor_dataset/{today}'.format(today=today_folder)
-y_file_seed = '../files/segunda/predictor_dataset_result/{today}'.format(today=today_folder)
+x_file_seed = './files/segunda/predictor_dataset/{today}'.format(today=today_folder)
+y_file_seed = './files/segunda/predictor_dataset_result/{today}'.format(today=today_folder)
 
 x_file_seed = [(f, join(x_file_seed, f))
                for f in listdir(x_file_seed) if isfile(join(x_file_seed, f))]
