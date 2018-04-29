@@ -275,12 +275,19 @@ class Features:
 
         return df_clasificacion
 
-    def predictor_dataset(self, df):
+    def predictor_dataset_team_by_team(self, df):
         """
         Create dataframe of features for the predictor
 
         First create the ratio values of calendar dataframe
         Second merge both dataframes one with the output the second one with the features.
+
+        The final dataframe predicts whether a team wins a match or not
+
+        For instance match between 1st and 5th:
+
+        ranking, GF, ..., result
+        1,       5,  ...,   X
 
         :param df: pandas DataFrame. Calendar dataframe
         :return:
@@ -289,8 +296,7 @@ class Features:
         if df is None or len(df) == 0:
             raise ValueError('Dataframe is empty')
 
-        cols_init = ['PG', 'PJ', 'PE', 'PP',
-                     'PG_local', 'PJ_local', 'PE_local', 'PP_local',
+        cols_init = ['PG', 'PJ', 'PE', 'PP', 'PG_local', 'PJ_local', 'PE_local', 'PP_local',
                      'PG_visitante', 'PJ_visitante', 'PE_visitante', 'PP_visitante']
         cols_result_init = ['team', 'jornada']
 
@@ -341,6 +347,102 @@ class Features:
             df = self.match_ranking_diff(df, jornada)
 
         return df
+
+    def predictor_dataset_match(self, df_temp):
+        """
+        Create dataframe of features for the predictor
+
+        First create the ratio values of calendar dataframe
+        Second merge both dataframes one with the output the second one with the features.
+
+        The final dataframe gives a winner for every match and have both teams statistics joined
+
+        For instance match between 1st and 5th:
+
+        ranking_x, ranking_y, GF_x, GF_y, ..., result
+        1,         5,         9,    7,  ...,   X
+
+        :param df: pandas DataFrame. Calendar dataframe
+        :return:
+        """
+
+        df = df_temp.copy()
+
+        if df is None or len(df) == 0:
+            raise ValueError('Dataframe is empty')
+
+        cols_init = ['PG', 'PJ', 'PE', 'PP',
+                     'PG_local', 'PJ_local', 'PE_local', 'PP_local',
+                     'PG_visitante', 'PJ_visitante', 'PE_visitante', 'PP_visitante']
+        cols_result_init = ['team', 'jornada']
+
+        if len([1 for col in cols_init if col not in df.columns]) > 0:
+            raise ValueError('Miss some mandatory columns in the dataframe')
+
+        if len([1 for col in cols_result_init if col not in df.columns]) > 0:
+            raise ValueError('Miss some mandatory columns in the dataframe')
+
+        df['GF_ratio'] = df['GF'] / df['PJ']
+        df['GC_ratio'] = df['GC'] / df['PJ']
+
+        # local stats
+        df['PG_local'] = df['PG_local'] / df['PJ_local']
+        df['PE_local'] = df['PE_local'] / df['PJ_local']
+        df['PP_local'] = df['PP_local'] / df['PJ_local']
+
+        # visitante stats
+        df['PG_visitante'] = df['PG_visitante'] / df['PJ_visitante']
+        df['PE_visitante'] = df['PE_visitante'] / df['PJ_visitante']
+        df['PP_visitante'] = df['PP_visitante'] / df['PJ_visitante']
+
+        df.drop(['PJ', 'PJ_local', 'PJ_visitante', 'PG', 'PE', 'PP',
+                 'GF_visitante', 'GC_visitante', 'pts_visitante',
+                 'GF_local', 'GC_local', 'pts_local', 'GF', 'GC'],
+                axis=1,
+                inplace=True)
+
+        df_results = self.df[self.df['jornada'] == df.jornada.values[0]]
+        df_results.loc[:, 'is_local'] = 1
+
+        df = df.merge(df_results[['local', 'is_local']],
+                      how='left',
+                      left_on='team',
+                      right_on='local').drop(['local'], axis=1)
+
+        df = df.fillna(0)
+
+        match = ['local', 'visitante']
+
+        for t in match:
+
+            other = [x for x in match if x != t][0]
+
+            if t == 'local':
+                df_temp = df[df['is_local'] == 1.0].copy()
+            elif t == 'visitante':
+                df_temp = df[df['is_local'] == 0.0].copy()
+            else:
+                raise ValueError('No dataframe to play with')
+
+            df_temp.rename(columns={f'PG_{t}': 'PG',
+                                    f'PP_{t}': 'PP',
+                                    f'PE_{t}': 'PE'},
+                           inplace=True)
+            df_temp.drop([f'PG_{other}', f'PE_{other}', f'PP_{other}', 'pts', 'is_local'],
+                         axis=1,
+                         inplace=True)
+
+            df_results = df_results.merge(df_temp,
+                                          how='left',
+                                          left_on=[f'{t}', 'jornada'],
+                                          right_on=['team', 'jornada'])
+
+        df_results.drop(['local', 'visitante', 'local_goals', 'visitante_goals',
+                         'team_x', 'team_y', 'is_local'],
+                        axis=1,
+                        inplace=True)
+
+        return df_results
 
     @staticmethod
     def clasificacion(df, df_prev_jornada):
@@ -470,6 +572,11 @@ def load_files(key, filename, df):
 
 def main():
 
+    today = dt.date.today()
+    today_folder = '{y}/{m}/{d}/'.format(y=today.year,
+                                         m=today.month,
+                                         d=today.day)
+
     # read matches
     df_all = pd.read_csv(input_file)
 
@@ -492,10 +599,8 @@ def main():
         featex.goles()
         featex.ganador()
 
-        key = './files/{liga}/partit_a_partit/{y}/{m}/{d}/'.format(liga=liga,
-                                                                   y=today.year,
-                                                                   m=today.month,
-                                                                   d=today.day)
+        key = './files/{liga}/partit_a_partit/{today}'.format(today=today,
+                                                              liga=liga)
         filename = 'partit_a_partit.csv'
         load_files(key, filename, featex.df)
 
@@ -506,6 +611,7 @@ def main():
 
         for jornada in sorted(featex.df_team.jornada.unique()):
 
+            # build clasificacion dataset
             df_temp = featex.clasificacion(featex.df_team[featex.df_team['jornada'] == jornada],
                                            df_prev_jornada)
 
@@ -515,19 +621,23 @@ def main():
                 logger.error('clasificacion returned None')
                 break
 
-            key = './files/{liga}/clasificacion/{y}/{m}/{d}/'.format(liga=liga,
-                                                                     y=today.year,
-                                                                     m=today.month,
-                                                                     d=today.day)
+            key = './files/{liga}/clasificacion/{today}'.format(today=today_folder,
+                                                                liga=liga)
             filename = 'clasificacion_{j}.csv'.format(j=jornada)
             load_files(key, filename, df_temp)
 
-            df_predictor_dataset = featex.predictor_dataset(df_temp)
+            # build match prediction dataset
+            df_predictor_match_dataset = featex.predictor_dataset_match(df_temp)
+            key = './files/{liga}/predictor_match_dataset/{today}'.format(today=today_folder,
+                                                                          liga=liga)
+            filename = 'predictor_match_dataset_{j}.csv'.format(j=jornada)
+            load_files(key, filename, df_predictor_match_dataset)
 
-            key = './files/{liga}/predictor_dataset/{y}/{m}/{d}/'.format(liga=liga,
-                                                                         y=today.year,
-                                                                         m=today.month,
-                                                                         d=today.day)
+            # build team prediction dataset
+            df_predictor_dataset = featex.predictor_dataset_team_by_team(df_temp)
+
+            key = './files/{liga}/predictor_dataset/{today}'.format(today=today_folder,
+                                                                    liga=liga)
             filename = 'predictor_dataset_{j}.csv'.format(j=jornada)
             load_files(key, filename, df_predictor_dataset)
 
