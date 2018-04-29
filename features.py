@@ -426,6 +426,52 @@ class Features:
         return df_results
 
     @staticmethod
+    def _transform(x):
+        if x == 'W':
+            return 3
+        elif x == 'T':
+            return 1
+        else:
+            return 0
+
+    @staticmethod
+    def clean_before_prediction(X_train, y_train, X_test, y_test):
+        """
+
+        :param X_train:
+        :param y_train:
+        :param X_test:
+        :param y_test:
+        :return:
+        """
+        X_train = X_train.fillna(0)
+        y_train = y_train.fillna(0)
+        X_test = X_test.fillna(0)
+        y_test = y_test.fillna(0)
+
+        X_train.drop(['team', 'jornada'], axis=1, inplace=True)
+        y_train.drop(['team', 'jornada'], axis=1, inplace=True)
+        X_test.drop(['team', 'jornada'], axis=1, inplace=True)
+        y_test.drop(['team', 'jornada'], axis=1, inplace=True)
+
+        win_labels = ['1_match_ago',
+                      '2_match_ago',
+                      '3_match_ago',
+                      '4_match_ago',
+                      '5_match_ago',
+                      '6_match_ago',
+                      '7_match_ago']
+
+        for label in win_labels:
+            X_train[label] = X_train[label].apply(lambda x: self._transform(x))
+            X_test[label] = X_test[label].apply(lambda x: self._transform(x))
+
+        y_train['result'] = y_train['result'].apply(lambda x: self._transform(x))
+        y_test['result'] = y_test['result'].apply(lambda x: self._transform(x))
+
+        return X_train, y_train, X_test, y_test
+
+    @staticmethod
     def clasificacion(df, df_prev_jornada):
         """
         Create all classification stats, namely:
