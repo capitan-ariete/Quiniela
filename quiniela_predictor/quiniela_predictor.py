@@ -9,21 +9,16 @@ from features import Features
 
 logger = logging.getLogger(__name__)
 
+ligas = ['primera', 'segunda']
+prediction = ['match_', '']
+
 today = dt.date.today()
 today_folder = '{y}/{m}/{d}/'.format(y=today.year,
                                      m=today.month,
                                      d=today.day)
 
-x_file_seed = './files/segunda/predictor_dataset/{today}'.format(today=today_folder)
-y_file_seed = './files/segunda/predictor_dataset_result/{today}'.format(today=today_folder)
-
-x_file_seed = [(f, join(x_file_seed, f))
-               for f in listdir(x_file_seed) if isfile(join(x_file_seed, f))]
-y_file_seed = [(f, join(y_file_seed, f))
-               for f in listdir(y_file_seed) if isfile(join(y_file_seed, f))]
-
-# TODO hay que encontrar una manera de no hardcodear este numero y que lo coja segun la liga
-jornada_limite = 36
+jornada_inicial = 8
+jornada_limite = 34
 
 
 def read_initial_datasets(files_list):
@@ -41,7 +36,7 @@ def read_initial_datasets(files_list):
         except ValueError:
             raise ValueError('The files do not contain the jornada')
 
-        if jornada in range(8, jornada_limite):
+        if jornada in range(jornada_inicial, jornada_limite):
             try:
                 train = pd.concat([train, pd.read_csv(file)])
             except ValueError:
@@ -79,28 +74,41 @@ def tpot_generation(X_train, y_train, X_test, y_test):
 
 def main():
 
-    X_train, X_test = read_initial_datasets(x_file_seed)
-    y_train, y_test = read_initial_datasets(y_file_seed)
+    for liga in ligas:
+        for p in prediction:
 
-    # initialize the class with a dummy dataframe
-    featex = Features(X_train)
-    X_train, y_train, X_test, y_test = featex.clean_before_prediction(X_train,
-                                                                      y_train,
-                                                                      X_test,
-                                                                      y_test)
+            file_seed = f'./files/{liga}/predictor_{p}dataset/{today_folder}'
 
-    # tpot_generation(X_train, y_train, X_test, y_test)
+            file_seed = [(f, join(file_seed, f))
+                         for f in listdir(file_seed) if isfile(join(file_seed, f))]
+
+            train, test = read_initial_datasets(file_seed)
+
+            X_train = train.drop(['winner', 'jornada'], axis=1)
+            #X_test = test.drop(['winner', 'jornada'], axis=1)
+            X_test = test.drop(['jornada'], axis=1)
+            y_train = train[['winner']]
+            #y_test = test[['winner']]
+
+            # initialize the class with a dummy dataframe
+            featex = Features(X_train)
+            X_train, X_test = featex.clean_before_prediction(X_train,
+                                                             X_test)
+
+            #tpot_generation(X_train, y_train, X_test, y_test)
 
 # TODO. Esto es sacado de lo que genera tpot. Hay que encontrar una manera de lanzarlo mas elegante
-    exported_pipeline = ExtraTreesClassifier(bootstrap=True,
-                                             criterion="entropy",
-                                             max_features=0.9000000000000001,
-                                             min_samples_leaf=12,
-                                             min_samples_split=10,
-                                             n_estimators=100)
+            exported_pipeline = ExtraTreesClassifier(bootstrap=True,
+                                                     criterion="entropy",
+                                                     max_features=0.9,
+                                                     min_samples_leaf=12,
+                                                     min_samples_split=10,
+                                                     n_estimators=100)
 
-    exported_pipeline.fit(X_train, y_train)
-# TODO hay que encontrar una manera de guardar este result
-    results = exported_pipeline.predict(X_test)
+            exported_pipeline.fit(X_train, y_train)
+# TODO hay que guardar este result
+            results = exported_pipeline.predict(X_test)
+
+            print(list(zip(results, y_test)))
 
     return

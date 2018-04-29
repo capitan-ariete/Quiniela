@@ -384,7 +384,10 @@ class Features:
                 axis=1,
                 inplace=True)
 
-        df_results = self.df[self.df['jornada'] == df.jornada.values[0]]
+        if df.jornada.values[0] == 34:
+            print('ei')
+
+        df_results = self.df[self.df['jornada'] == df.jornada.values[0]+1]
         df_results.loc[:, 'is_local'] = 1
 
         df = df.merge(df_results[['local', 'is_local']],
@@ -420,59 +423,35 @@ class Features:
                                           left_on=[f'{t}', 'jornada'],
                                           right_on=['team', 'jornada'])
 
-         df_results.drop(['local', 'visitante', 'local_goals', 'visitante_goals',
-                          'team_x', 'team_y', 'is_local'],
-                         axis=1,
-                         inplace=True)
+        df_results.drop(['local', 'visitante', 'local_goals', 'visitante_goals',
+                         'team_x', 'team_y', 'is_local'],
+                        axis=1,
+                        inplace=True)
 
         return df_results
 
     @staticmethod
-    def clean_before_prediction(X_train, y_train, X_test, y_test):
+    def clean_before_prediction(X_train, X_test):
         """
 
         :param X_train:
-        :param y_train:
         :param X_test:
-        :param y_test:
         :return:
         """
 
         def transform(x):
             if x == 'W':
-                return 3
+                return 2
             elif x == 'T':
                 return 1
             else:
                 return 0
 
-
-        X_train = X_train.fillna(0)
-        y_train = y_train.fillna(0)
-        X_test = X_test.fillna(0)
-        y_test = y_test.fillna(0)
-
-        X_train.drop(['team', 'jornada'], axis=1, inplace=True)
-        y_train.drop(['team', 'jornada'], axis=1, inplace=True)
-        X_test.drop(['team', 'jornada'], axis=1, inplace=True)
-        y_test.drop(['team', 'jornada'], axis=1, inplace=True)
-
-        win_labels = ['1_match_ago',
-                      '2_match_ago',
-                      '3_match_ago',
-                      '4_match_ago',
-                      '5_match_ago',
-                      '6_match_ago',
-                      '7_match_ago']
-
-        for label in win_labels:
+        for label in [x for x in X_train.columns if 'match_ago' in x]:
             X_train[label] = X_train[label].apply(lambda x: transform(x))
             X_test[label] = X_test[label].apply(lambda x: transform(x))
 
-        y_train['result'] = y_train['result'].apply(lambda x: transform(x))
-        y_test['result'] = y_test['result'].apply(lambda x: transform(x))
-
-        return X_train, y_train, X_test, y_test
+        return X_train, X_test
 
     @staticmethod
     def clasificacion(df, df_prev_jornada):

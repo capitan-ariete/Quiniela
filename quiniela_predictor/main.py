@@ -18,11 +18,13 @@ logger.setLevel(logging.DEBUG)
 def main():
     try:
         featex.main()
+        logger.info('Features created.')
     except ValueError:
         raise ValueError('Cannot finish feature generation.')
 
     try:
         predictin.main()
+        logger.info('Prediction done.')
     except ValueError:
         raise ValueError('Cannot finish prediction.')
 

@@ -112,6 +112,7 @@ def main():
             filename = 'predictor_dataset_{j}.csv'.format(j=jornada)
             load_files(key, filename, df_predictor_dataset)
 
+# TODO esto tiene que estar incluido en el predictor_data_set_{j}!! No separado!!
             '''
             Build team result prediction dataset
             '''
