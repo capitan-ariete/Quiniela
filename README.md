@@ -1,6 +1,15 @@
 # Quiniela
 Crawler and Data Science. Crawling www.as.com for "La Liga" results and build a quiniela predictor for spanish football league (La Liga).
 
+docker-compose.yml
+docker
+├── quiniela_crawler
+│   └── Dockerfile
+├── features_generator
+│   └── Dockerfile
+└── quiniela_predictor
+    └── Dockerfile
+
 <h3> 1. Crawl football results</h3>
 Crawl this
 <a href="https://resultados.as.com/resultados/futbol/primera/2017_2018/jornada/regular_a_*/">online resource</a>
@@ -10,8 +19,8 @@ using scrapy (spider <a href="using scrapy at Quiniela/quiniela_crawler/quiniela
 Create features dataset from the data crawled from the internet.
 (script <a href="Quiniela/features_generator.py">here</a>)
 
-<h3> 3. [PENDING] Predict next 'jornada' </h3>
-[PENDING] Predict next jornada results to play Quiniela.
+<h3> 3. Predict next matches </h3>
+Predict next jornada results to play Quiniela.
 
 <h3> Bibliography </h3>
 

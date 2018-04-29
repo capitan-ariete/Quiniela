@@ -426,15 +426,6 @@ class Features:
         return df_results
 
     @staticmethod
-    def _transform(x):
-        if x == 'W':
-            return 3
-        elif x == 'T':
-            return 1
-        else:
-            return 0
-
-    @staticmethod
     def clean_before_prediction(X_train, y_train, X_test, y_test):
         """
 
@@ -444,6 +435,16 @@ class Features:
         :param y_test:
         :return:
         """
+
+        def transform(x):
+            if x == 'W':
+                return 3
+            elif x == 'T':
+                return 1
+            else:
+                return 0
+
+
         X_train = X_train.fillna(0)
         y_train = y_train.fillna(0)
         X_test = X_test.fillna(0)
@@ -463,11 +464,11 @@ class Features:
                       '7_match_ago']
 
         for label in win_labels:
-            X_train[label] = X_train[label].apply(lambda x: self._transform(x))
-            X_test[label] = X_test[label].apply(lambda x: self._transform(x))
+            X_train[label] = X_train[label].apply(lambda x: transform(x))
+            X_test[label] = X_test[label].apply(lambda x: transform(x))
 
-        y_train['result'] = y_train['result'].apply(lambda x: self._transform(x))
-        y_test['result'] = y_test['result'].apply(lambda x: self._transform(x))
+        y_train['result'] = y_train['result'].apply(lambda x: transform(x))
+        y_test['result'] = y_test['result'].apply(lambda x: transform(x))
 
         return X_train, y_train, X_test, y_test
 

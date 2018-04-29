@@ -1,7 +1,5 @@
-import os
 import datetime as dt
 import logging.config
-from logging.config import fileConfig
 import pandas as pd
 from tpot import TPOTClassifier
 from os import listdir
@@ -9,15 +7,7 @@ from os.path import isfile, join
 from sklearn.ensemble import ExtraTreesClassifier
 from features import Features
 
-if not os.path.isdir('logs'):
-    os.makedirs('logs')
-if not os.path.isfile('logs/python.log'):
-    os.mknod('logs/python.log')
-
 logger = logging.getLogger(__name__)
-fileConfig('logger.ini')
-logger = logging.getLogger()
-logger.setLevel(logging.DEBUG)
 
 today = dt.date.today()
 today_folder = '{y}/{m}/{d}/'.format(y=today.year,
@@ -92,7 +82,8 @@ def main():
     X_train, X_test = read_initial_datasets(x_file_seed)
     y_train, y_test = read_initial_datasets(y_file_seed)
 
-    featex = Features(pd.DataFrame())
+    # initialize the class with a dummy dataframe
+    featex = Features(X_train)
     X_train, y_train, X_test, y_test = featex.clean_before_prediction(X_train,
                                                                       y_train,
                                                                       X_test,
@@ -113,9 +104,3 @@ def main():
     results = exported_pipeline.predict(X_test)
 
     return
-
-
-if __name__ == '__main__':
-    logger.info("It's show time.")
-    main()
-    logger.info("You have been terminated.")

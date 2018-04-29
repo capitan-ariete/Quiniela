@@ -1,0 +1,14 @@
+version: '1'
+services:
+  spider:
+    # will build ./docker//Dockerfile
+    build: ./docker/quiniela_crawler
+    ports:
+     - "5000:5000"
+    volumes:
+     - .:/code
+  predictin:
+    # will build ./docker/db/Dockerfile
+    build: ./docker/quiniela_predictor
+    ports:
+      - "3306:3306"

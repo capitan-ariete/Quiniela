@@ -1,19 +1,10 @@
 import os
 import logging.config
-from logging.config import fileConfig
 import pandas as pd
 import datetime as dt
 from features import Features
 
-if not os.path.isdir('logs'):
-    os.makedirs('logs')
-if not os.path.isfile('logs/python.log'):
-    os.mknod('logs/python.log')
-
 logger = logging.getLogger(__name__)
-fileConfig('logger.ini')
-logger = logging.getLogger()
-logger.setLevel(logging.DEBUG)
 
 input_file = './files/file.csv'
 ligas = ['primera', 'segunda']
@@ -134,9 +125,3 @@ def main():
                 load_files(key, filename, y)
 
             df_predictor_dataset_old = df_predictor_dataset[['team', 'jornada']].copy()
-
-
-if __name__ == '__main__':
-    logger.info("It's show time.")
-    main()
-    logger.info("You have been terminated.")
