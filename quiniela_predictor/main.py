@@ -1,8 +1,10 @@
 import os
+
 import logging.config
 from logging.config import fileConfig
-import features_generator as featex
-import quiniela_predictor as predictin
+
+from features_generator import features_generator_orchestrator
+from quiniela_predictor import quiniela_predictor_orchestrator
 
 if not os.path.isdir('logs'):
     os.makedirs('logs')
@@ -16,19 +18,19 @@ logger.setLevel(logging.DEBUG)
 
 
 def main():
+    """Main function
+    """
     try:
-        featex.main()
+        features_generator_orchestrator()
         logger.info('Features created.')
     except ValueError:
         raise ValueError('Cannot finish feature generation.')
 
     try:
-        predictin.main()
+        quiniela_predictor_orchestrator()
         logger.info('Prediction done.')
     except ValueError:
         raise ValueError('Cannot finish prediction.')
-
-    return
 
 
 if __name__ == '__main__':

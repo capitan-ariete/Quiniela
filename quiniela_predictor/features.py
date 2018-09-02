@@ -3,6 +3,9 @@ import numpy as np
 
 
 class Features:
+    """
+    Features to train and predict the matches results
+    """
 
     def __init__(self, df):
         """
@@ -384,11 +387,15 @@ class Features:
                 axis=1,
                 inplace=True)
 
-        if df.jornada.values[0] == 34:
-            print('ei')
-
-        df_results = self.df[self.df['jornada'] == df.jornada.values[0]+1]
-        df_results.loc[:, 'is_local'] = 1
+        # to train
+        if df.jornada.values[0] < self.df['jornada'].max():
+            df_results = self.df[self.df['jornada'] == df.jornada.values[0]+1]
+            df_results.loc[:, 'is_local'] = 1
+        # to predict
+        elif df.jornada.values[0] >= self.df['jornada'].max():
+            df_results = self.df[self.df['jornada'] == df.jornada.values[0]]
+            df_results.loc[:, 'is_local'] = 1
+            df_results['winner'] = 0
 
         df = df.merge(df_results[['local', 'is_local']],
                       how='left',
@@ -420,8 +427,8 @@ class Features:
 
             df_results = df_results.merge(df_temp,
                                           how='left',
-                                          left_on=[f'{t}', 'jornada'],
-                                          right_on=['team', 'jornada'])
+                                          left_on=[f'{t}'],
+                                          right_on=['team'])
 
         df_results.drop(['local', 'visitante', 'local_goals', 'visitante_goals',
                          'team_x', 'team_y', 'is_local'],
@@ -441,11 +448,11 @@ class Features:
 
         def transform(x):
             if x == 'W':
-                return 2
-            elif x == 'T':
                 return 1
-            else:
+            elif x == 'T':
                 return 0
+            else:
+                return 2
 
         for label in [x for x in X_train.columns if 'match_ago' in x]:
             X_train[label] = X_train[label].apply(lambda x: transform(x))
