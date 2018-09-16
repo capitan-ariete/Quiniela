@@ -37,13 +37,17 @@ class Features:
             logger.warning('Cannot extract jornada number from url string')
             return
 
+        try:
+            df['match'] = df['match'].apply(lambda x: x.split(' en directo')[0])
+        except ValueError:
+            logger.warning('Cannot extract jornada number from url string')
+            return
+
         if df is None or len(df) == 0:
             logger.warning('Dataframe is empty')
             return
         else:
             self.df = df.copy()
-
-        return
 
     def local_visitante(self):
         """

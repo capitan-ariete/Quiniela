@@ -23,7 +23,10 @@ class BlogSpider(scrapy.Spider):
         """
         list_years = list(zip(range(2013, 2019), range(2014, 2020)))
         jornadas = range(1, 39)
-        ligas = ['primera', 'segunda']
+        ligas = [
+            'primera',
+            'segunda',
+        ]
 
         urls = [f'https://resultados.as.com/resultados/futbol/' \
                 f'{liga}/' \
@@ -40,7 +43,7 @@ class BlogSpider(scrapy.Spider):
         Crawl leagues seassons from 2013-2014 onwards.
         :return:
         """
-        urls = _urls_generator()
+        urls = self._urls_generator()
 
         for url in urls:
             try:

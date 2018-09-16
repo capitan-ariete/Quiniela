@@ -45,8 +45,7 @@ def _build_classification():
     if df_temp is not None:
         df_prev_jornada = df_temp.copy()
     else:
-        logger.error('clasificacion returned None')
-        break
+        raise ValueError('clasificacion returned None')
 
     key = f'./files/{liga}/clasificacion/{today_folder}'
     filename = f'clasificacion_{jornada}.csv'
@@ -122,30 +121,39 @@ def _build_results():
         process_jornada(jornada)
 
 
-def process_league(liga):
+# TODO pending filter by seassons
+def process_league(league, df):
     """
     Process every single match for a given league.
     :warning: Working for La Liga and 2da division
+    :param league:
+    :param df:
     :return:
     """
-    df = df_all[df_all['liga'] == liga]
+    # prepare league dataset
+    df = df[df['liga'] == league]
     df.drop('liga', axis=1, inplace=True)
 
-    featex = Features(df)
+    # invoke Features class
+    features = Features(df)
 
     # create stats
-    featex.jornada_generator()
-    featex.local_visitante()
-    featex.goles()
-    featex.ganador()
+    features.jornada_generator()
+# TODO aqui ya puedo aplicar la solucion del post https://towardsdatascience.com/o-jogo-bonito-predicting-the-premier-league-with-a-random-model-1b02fa3a7e5a
+
+# TODO old process:
+    features.local_visitante()
+    features.goles()
+    features.ganador()
 
     build_results()
 
 
 def features_generator_orchestrator():
-
-    today = dt.date.today()
-
+    """
+    Features Orchestrator
+    :return:
+    """
     # read matches
     df_all = pd.read_csv(input_file)
 
@@ -154,5 +162,5 @@ def features_generator_orchestrator():
 
     for liga in ligas:
         logger.info(f'Generating data for competition: {liga}')
-        process_league(liga)
+        process_league(league=liga, df=df_all)
         logger.info(f'League {liga} | prediction completed')
