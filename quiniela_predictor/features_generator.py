@@ -1,6 +1,13 @@
+"""Refs
+https://github.com/neerajnj10/soccer-analytics-with-python-mongoDB-and-R/blob/master/FinalReport.md
+https://towardsdatascience.com/o-jogo-bonito-predicting-the-premier-league-with-a-random-model-1b02fa3a7e5a
+https://github.com/tuangauss/Various-projects/blob/master/R/EPL/sim.R
+"""
+
 import os
 
 import logging.config
+import numpy as np
 import pandas as pd
 import datetime as dt
 
@@ -8,7 +15,8 @@ from features import Features
 
 logger = logging.getLogger(__name__)
 
-input_file = './files/file.csv'
+# input_file = './files/file.csv'
+input_file = './files/file_many_seassons.csv'
 ligas = ['primera', 'segunda']
 today = dt.date.today()
 
@@ -121,6 +129,50 @@ def _build_results():
         process_jornada(jornada)
 
 
+# TODO to develop
+# TODO necesito ampliar a 5 seassons para tener mejores resultados!!
+def poisson_prediction(df):
+    import operator
+    # TODO next var
+    # next_journey_matches # list of tuples of teams (home, away) [(barça, madrid), (bilbao, osasuna), ...]
+    next_journey_matches = [('R. Sociedad', 'Barcelona'), ('Athletic', 'Real Madrid'), ('Valencia', 'Betis')] # TODO this is a toy
+    table = dict()
+    for match in next_journey_matches:
+        sim_num = 10000
+        result = {
+            'prob_home_win': 0,
+            'prob_tie': 0,
+            'prob_away_win': 0
+        }
+        for _ in range(sim_num):
+            if len(df_temp) > 3:
+                mask = (
+                        (df['local'] == match[0])
+                        &
+                        (df['visitante'] == match[1])
+                )
+                df_temp = df[mask].copy()
+                avg_home_scored = round(df_temp.local_goals.mean(), 2)
+                avg_away_scored = round(df_temp.visitante_goals.mean(), 2)
+                h_goals = np.random.poisson(1, int(avg_home_scored))
+                a_goals = np.random.poisson(1, int(avg_away_scored))
+            else:
+# TODO     h_scored = rpois(1, 1/2 * (ave[ave$Team == home,]$ave_scored_h + # ave[ave$Team == away,]$ave_conceded_a))
+                h_goals = np.random.poisson(1, int(avg_home_scored))
+                a_goals = np.random.poisson(1, int(avg_away_scored))
+
+            if h_goals > a_goals:
+                result['prob_home_win'] += 1
+            elif h_goals == a_goals:
+                result['prob_tie'] += 1
+            else:
+                result['prob_away_win'] += 1
+
+        print(match, result)
+        table[match] = max(result.items(), key=operator.itemgetter(1))[0]
+    return table
+
+
 # TODO pending filter by seassons
 def process_league(league, df):
     """
@@ -138,15 +190,18 @@ def process_league(league, df):
     features = Features(df)
 
     # create stats
+    features.seasson()
     features.jornada_generator()
-# TODO aqui ya puedo aplicar la solucion del post https://towardsdatascience.com/o-jogo-bonito-predicting-the-premier-league-with-a-random-model-1b02fa3a7e5a
-
-# TODO old process:
     features.local_visitante()
     features.goles()
     features.ganador()
 
-    build_results()
+    if 'seasson' not in features.df.columns:
+        # :warning: this is the old process
+        build_results()
+    else:
+        # TODO aqui ya puedo aplicar la solucion del post https://towardsdatascience.com/o-jogo-bonito-predicting-the-premier-league-with-a-random-model-1b02fa3a7e5a
+        poisson_prediction(features.df)
 
 
 def features_generator_orchestrator():

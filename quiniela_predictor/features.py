@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import re
 
 
 class Features:
@@ -101,6 +102,26 @@ class Features:
             raise ValueError('Dataframe is empty')
 
         self.df = df.drop('result', axis=1).copy()
+
+        return
+
+    def seasson(self):
+        """
+        Extract the seasson of the match
+        :return:
+        """
+        def regex_seasson(x):
+            x = x.split('regular_a_')[0]
+            seassons = re.findall(r'\d+', x)
+            return seassons[0]
+
+        try:
+            self.df['seasson'] = self.df['jornada'].apply(lambda x: regex_seasson(x))
+        except ValueError as err:
+            raise err
+
+        if self.df.seasson.nunique() <= 1:
+            self.df.drop('seasson', axis=1, inplace=True)
 
         return
 
